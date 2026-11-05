@@ -1,0 +1,12 @@
+services:
+  forma-3mf:
+    build: .
+    ports:
+      - "3001:3001"
+    environment:
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina ADMIN_PASSWORD no .env}
+      DATA_DIR: /app/data
+      PORT: 3001
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

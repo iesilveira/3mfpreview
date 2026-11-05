@@ -1,0 +1,21 @@
+{
+  "name": "3mf-aprovacao-mvp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MVP para revisão e aprovação de modelos 3MF",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -k \"node server.js\" \"vite --host 0.0.0.0\"",
+    "build": "vite build",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "three": "0.187.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "vite": "^7.1.12"
+  }
+}
