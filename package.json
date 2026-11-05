@@ -1,18 +1,21 @@
 {
   "name": "3mf-aprovacao-mvp",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "private": true,
   "description": "MVP para revisão e aprovação de modelos 3MF",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k \"node server.js\" \"vite --host 0.0.0.0\"",
     "build": "vite build",
-    "start": "node server.js"
+    "start": "node server.js",
+    "data:import": "node scripts/import-legacy.js",
+    "admin:setup-token": "node scripts/setup-token.js"
   },
   "dependencies": {
     "express": "^5.1.0",
     "multer": "^2.0.2",
-    "three": "0.187.0"
+    "three": "0.187.0",
+    "mysql2": "3.24.6"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

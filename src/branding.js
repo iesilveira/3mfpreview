@@ -41,6 +41,7 @@ const textFields = [
   ['reviewCaption','Cabeçalho: legenda da revisão do cliente'],
   ['loginCaption','Cabeçalho: legenda do login'],
   ['settingsLabel','Cabeçalho: texto do botão de personalização'],
+  ['accountLabel','Cabeçalho: texto do botão de conta'],
   ['logoutLabel','Cabeçalho: texto do botão de saída'],
   ['footerLeft','Rodapé: texto esquerdo'], ['footerRight','Rodapé: texto direito']
 ];

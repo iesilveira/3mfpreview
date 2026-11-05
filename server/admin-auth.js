@@ -1,125 +1,100 @@
 import crypto from 'node:crypto';
-import { promisify } from 'node:util';
-const scrypt = promisify(crypto.scrypt);
-const COOKIE = 'preview_admin_session';
-const TTL = 8 * 60 * 60 * 1000;
-const WINDOW = 15 * 60 * 1000;
-const digest = value => crypto.createHash('sha256').update(value).digest('hex');
-const equal = (a, b) => {
-  const x = Buffer.from(String(a)), y = Buffer.from(String(b));
-  return x.length === y.length && crypto.timingSafeEqual(x, y);
-};
-export function installAdminAuth(app, options = {}) {
-  const email = String(options.email ?? process.env.ADMIN_EMAIL ?? '').trim().toLowerCase();
-  const password = String(options.password ?? process.env.ADMIN_PASSWORD ?? '');
-  const configured = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
-    && password.length >= 12 && password.length <= 1024
-    && !['troque-esta-senha', 'defina-uma-senha-forte', 'uma-senha-forte'].includes(password);
-  const sessions = new Map(), attempts = new Map();
-  const salt = crypto.randomBytes(32);
-  // Promise inicializada sem top-level await: compatível com carregamento por require().
-  const expected = configured ? scrypt(password, salt, 64) : Promise.resolve(null);
-  expected.catch(error => console.error('Falha ao preparar autenticação:', error.message));
-  const cookieOptions = req => {
-    const setting = String(process.env.COOKIE_SECURE || 'auto').toLowerCase();
-    const secure = setting === 'true' || (setting !== 'false'
-      && (process.env.NODE_ENV === 'production' || Boolean(req.secure)));
-    return { httpOnly: true, sameSite: 'strict', secure, path: '/' };
+import { sha,equal,emailValue,checkNewPassword,hashPassword,verifyPassword } from './passwords.js';
+const COOKIE='preview_admin_session',TTL=8*60*60*1000;
+export function sameOrigin(req,res) {
+  try {
+    const origin=new URL(String(req.get('origin')||''));
+    if(!['http:','https:'].includes(origin.protocol) || origin.host.toLowerCase()!==String(req.get('host')||'').toLowerCase()) throw new Error();
+    return true;
+  } catch {res.status(403).json({error:'Origem da solicitação inválida.'});return false;}
+}
+export function installAdminAuth(app,{store}={}) {
+  if(!store) throw new Error('Armazenamento MySQL obrigatório.');
+  let hashing=0;
+  const expensive=async work=>{
+    if(hashing>=2) throw Object.assign(new Error('Autenticação ocupada. Tente novamente.'),{status:429});
+    hashing++;try{return await work();}finally{hashing--;}
   };
-  const tokenFrom = req => {
-    const raw = String(req.get('cookie') || '');
-    const match = raw.match(/(?:^|;\s*)preview_admin_session=([a-f0-9]{64})(?:;|$)/);
-    return match ? match[1] : '';
+  const cookieOptions=req=>{const value=String(process.env.COOKIE_SECURE||'auto').toLowerCase();
+    return {httpOnly:true,sameSite:'strict',path:'/',secure:value==='true' || (value!=='false'&&(process.env.NODE_ENV==='production'||Boolean(req.secure)))};};
+  const tokenFrom=req=>String(req.get('cookie')||'').match(/(?:^|;\s*)preview_admin_session=([a-f0-9]{64})(?:;|$)/)?.[1]||'';
+  const sessionFrom=req=>{const token=tokenFrom(req);return token?store.session(sha(token)):Promise.resolve(null);};
+  const limited=async(req,res,key,max=10)=>{
+    const delay=await store.rate(key,max);
+    if(!delay)return false;
+    res.set('Retry-After',String(delay)).status(429).json({error:'Muitas tentativas. Aguarde e tente novamente.'});
+    return true;
   };
-  const sessionFrom = req => {
-    const token = tokenFrom(req);
-    if (!token) return null;
-    const key = digest(token), session = sessions.get(key);
-    if (!session) return null;
-    if (session.expires <= Date.now()) { sessions.delete(key); return null; }
-    return { ...session, key };
-  };
-  const sameOrigin = (req, res) => {
+  async function requireAdmin(req,res,next) {
     try {
-      const origin = new URL(String(req.get('origin') || ''));
-      if (!['http:', 'https:'].includes(origin.protocol)
-          || origin.host.toLowerCase() !== String(req.get('host') || '').toLowerCase())
-        throw new Error();
-      return true;
-    } catch {
-      res.status(403).json({ error: 'Origem da solicitação inválida.' });
-      return false;
-    }
-  };
-  function requireAdmin(req, res, next) {
-    res.set('Cache-Control', 'no-store');
-    const session = sessionFrom(req);
-    if (!session) return res.status(401).json({ error: 'Sessão expirada. Entre novamente.' });
-    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
-      if (!sameOrigin(req, res)) return;
-      if (!equal(req.get('x-csrf-token') || '', session.csrf))
-        return res.status(403).json({ error: 'Token de segurança inválido. Recarregue o painel.' });
-    }
-    req.adminSession = session;
-    next();
+      res.set('Cache-Control','no-store');
+      const session=await sessionFrom(req);
+      if(!session)return res.status(401).json({error:'Sessão expirada. Entre novamente.'});
+      if(!['GET','HEAD','OPTIONS'].includes(req.method)){
+        if(!sameOrigin(req,res))return;
+        if(!equal(req.get('x-csrf-token')||'',session.csrf))
+          return res.status(403).json({error:'Token de segurança inválido. Recarregue o painel.'});
+      }
+      req.adminSession=session;return next();
+    }catch(error){return next(error);}
   }
-  app.use('/api/auth', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
-  app.use('/api/admin', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
-  app.post('/api/auth/login', async (req, res, next) => {
-    try {
-      if (!sameOrigin(req, res)) return;
-      if (!String(req.get('content-type') || '').toLowerCase().startsWith('application/json'))
-        return res.status(415).json({ error: 'Envie JSON.' });
-      if (!configured) return res.status(503).json({
-        error: 'Configure ADMIN_EMAIL e ADMIN_PASSWORD (senha exclusiva com pelo menos 12 caracteres) no servidor.'
-      });
-      const ip = String(req.ip || req.socket?.remoteAddress || 'unknown');
-      const now = Date.now();
-      let bucket = attempts.get(ip);
-      if (!bucket || now >= bucket.until) {
-        if (attempts.size >= 10000) return res.status(503).json({ error: 'Tente novamente mais tarde.' });
-        bucket = { count: 0, until: now + WINDOW };
-        attempts.set(ip, bucket);
-      }
-      if (bucket.count >= 10) {
-        res.set('Retry-After', String(Math.max(1, Math.ceil((bucket.until - now) / 1000))));
-        return res.status(429).json({ error: 'Muitas tentativas. Aguarde até 15 minutos.' });
-      }
-      bucket.count++;
-      const suppliedPassword = typeof req.body?.password === 'string' ? req.body.password : '';
-      const suppliedEmail = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-      if (suppliedPassword.length > 1024 || suppliedEmail.length > 254)
-        return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
-      const actual = await scrypt(suppliedPassword, salt, 64);
-      const record = await expected;
-      const passwordMatches = crypto.timingSafeEqual(actual, record);
-      if (!passwordMatches || !equal(suppliedEmail, email))
-        return res.status(401).json({ error: 'E-mail ou senha inválidos.' });
-      attempts.delete(ip);
-      const old = sessionFrom(req);
-      if (old) sessions.delete(old.key);
-      for (const [key, value] of sessions) if (value.expires <= now) sessions.delete(key);
-      if (sessions.size >= 500) sessions.delete(sessions.keys().next().value);
-      const token = crypto.randomBytes(32).toString('hex');
-      const session = { email, csrf: crypto.randomBytes(32).toString('hex'), expires: now + TTL };
-      sessions.set(digest(token), session);
-      res.cookie(COOKIE, token, { ...cookieOptions(req), maxAge: TTL });
-      res.json({ email, csrfToken: session.csrf });
-    } catch (error) { next(error); }
+  app.use('/api/auth',(_req,res,next)=>{res.set('Cache-Control','no-store');next();});
+  app.use('/api/admin',(_req,res,next)=>{res.set('Cache-Control','no-store');next();});
+  app.get('/api/auth/status',async(_req,res,next)=>{
+    try{res.json({setupRequired:await store.setupRequired()});}catch(error){next(error);}
   });
-  app.get('/api/auth/session', requireAdmin, (req, res) =>
-    res.json({ email: req.adminSession.email, csrfToken: req.adminSession.csrf }));
-  app.post('/api/auth/logout', requireAdmin, (req, res) => {
-    sessions.delete(req.adminSession.key);
-    res.clearCookie(COOKIE, cookieOptions(req));
-    res.json({ ok: true });
+  app.post('/api/auth/setup',async(req,res,next)=>{
+    try{
+      if(!sameOrigin(req,res))return;
+      if(await limited(req,res,'setup:'+req.ip))return;
+      if(!String(req.get('content-type')||'').startsWith('application/json'))return res.status(415).json({error:'Envie JSON.'});
+      const email=emailValue(req.body?.email),password=checkNewPassword(req.body?.password);
+      const token=String(req.body?.token||'').trim().toLowerCase();
+      if(!/^[a-f0-9]{64}$/.test(token))return res.status(403).json({error:'Token de instalação inválido ou expirado.'});
+      const hash=await expensive(()=>hashPassword(password));
+      await store.initialAdmin(email,hash,sha(token));
+      res.status(201).json({ok:true});
+    }catch(error){next(error);}
   });
-  const timer = setInterval(() => {
-    const now = Date.now();
-    for (const [key, value] of sessions) if (value.expires <= now) sessions.delete(key);
-    for (const [key, value] of attempts) if (value.until <= now) attempts.delete(key);
-  }, 60000);
-  timer.unref();
-  if (!configured) console.warn('Login indisponível: configure ADMIN_EMAIL e ADMIN_PASSWORD forte.');
-  return { requireAdmin, configured };
+  app.post('/api/auth/login',async(req,res,next)=>{
+    try{
+      if(!sameOrigin(req,res))return;
+      if(!String(req.get('content-type')||'').startsWith('application/json'))return res.status(415).json({error:'Envie JSON.'});
+      const key='login:'+req.ip;
+      if(await limited(req,res,key))return;
+      let email;try{email=emailValue(req.body?.email);}catch{return res.status(401).json({error:'E-mail ou senha inválidos.'});}
+      const user=await store.findUser(email);
+      const valid=await expensive(()=>verifyPassword(req.body?.password,user?.password_hash));
+      if(!valid || !user?.active)return res.status(401).json({error:'E-mail ou senha inválidos.'});
+      await store.clearRate(key);
+      const token=crypto.randomBytes(32).toString('hex'),csrf=crypto.randomBytes(32).toString('hex');
+      await store.createSession(user,sha(token),csrf,Date.now()+TTL);
+      const old=tokenFrom(req);if(old)await store.revoke(sha(old));
+      res.cookie(COOKIE,token,{...cookieOptions(req),maxAge:TTL});
+      res.json({email:user.email,csrfToken:csrf});
+      store.cleanup().catch(()=>{});
+    }catch(error){next(error);}
+  });
+  app.get('/api/auth/session',requireAdmin,(req,res)=>res.json({email:req.adminSession.email,csrfToken:req.adminSession.csrf}));
+  app.post('/api/auth/logout',requireAdmin,async(req,res,next)=>{
+    try{await store.revoke(req.adminSession.token_hash);res.clearCookie(COOKIE,cookieOptions(req));res.json({ok:true});}catch(error){next(error);}
+  });
+  app.get('/api/admin/account',requireAdmin,(req,res)=>res.json({email:req.adminSession.email}));
+  app.patch('/api/admin/account',requireAdmin,async(req,res,next)=>{
+    try{
+      const key='account:'+req.adminSession.userId;
+      if(await limited(req,res,key,5))return;
+      const user=await store.userById(req.adminSession.userId);
+      if(!user || !await expensive(()=>verifyPassword(req.body?.currentPassword,user.password_hash)))
+        return res.status(401).json({error:'Senha atual inválida.'});
+      const email=emailValue(req.body?.email);
+      const password=String(req.body?.newPassword||'');
+      const hash=password?await expensive(()=>hashPassword(password)):user.password_hash;
+      await store.changeAccount(user,email,hash);
+      await store.clearRate(key);
+      res.clearCookie(COOKIE,cookieOptions(req));
+      res.json({ok:true,loginRequired:true});
+    }catch(error){if(error.code==='ER_DUP_ENTRY')return res.status(409).json({error:'E-mail já utilizado.'});next(error);}
+  });
+  return {requireAdmin};
 }

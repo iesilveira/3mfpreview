@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0] - 2026-11-05
+- MySQL para administradores, sessões/CSRF, limites, projetos/clientes, decisões, identidade e imagens.
+- Somente binários 3MF permanecem em DATA_DIR/models.
+- Importação legada explícita e transacional, com preservação de IDs/tokens e verificação de arquivos.
+- Cadastro inicial por token temporário, senhas scrypt e edição da própria conta.
+- Bloqueio da API até migração/importação; sem fallback silencioso a JSON.
+- Preservados visualizador, busca, links, upload e personalização da 1.2.0.
+
 ## [1.2.0] - 2026-11-05
 - Montserrat e cores configuráveis, inicialmente #0572cf e #e62526.
 - Login administrativo por e-mail/senha com sessão, logout, CSRF e limites de tentativa.

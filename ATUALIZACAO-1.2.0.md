@@ -1,3 +1,5 @@
+> HISTÓRICO: substituído por ATUALIZACAO-1.3.0.md. Não usar estas instruções na versão atual.
+
 # Atualização 1.2.0
 
 ## Base e execução

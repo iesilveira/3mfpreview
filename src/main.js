@@ -3,6 +3,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
 import './style.css';
 import { branding, loadBranding, openBrandingSettings } from './branding.js';
+import { renderInitialSetup, openAccount } from './account.js';
 
 const app = document.querySelector('#app');
 const isPublicReview = /^\/p\/[^/]+/.test(window.location.pathname);
@@ -49,23 +50,28 @@ function appShell(content) {
       </a>
       <span class="topbar-caption">${esc(caption)}</span>
       ${!isPublicReview && adminAuthenticated ? `<nav class="topbar-actions" aria-label="Administração">
+        <button type="button" class="link-button" id="admin-account" aria-label="Minha conta">${esc(branding.accountLabel) || "Conta"}</button>
         <button type="button" class="link-button" id="brand-settings" aria-label="Personalização">${esc(branding.settingsLabel) || '⚙'}</button>
         <button type="button" class="link-button" id="logout" aria-label="Sair">${esc(branding.logoutLabel) || '↪'}</button>
       </nav>` : ''}
     </header>${content}
     <footer class="footer"><span>${esc(branding.footerLeft)}</span><span>${esc(branding.footerRight)}</span></footer>
   </div>`;
+  document.querySelector('#admin-account')?.addEventListener('click', () => openAccount(api, () => {
+    adminAuthenticated = false; csrfToken = ''; allProjects = []; renderLogin();
+  }));
   document.querySelector('#brand-settings')?.addEventListener('click', () =>
     openBrandingSettings(api, () => renderAdmin()));
   document.querySelector('#logout')?.addEventListener('click', async event => {
-    event.currentTarget.disabled = true;
+    const logoutButton = event.currentTarget;
+    logoutButton.disabled = true;
     try {
       await api('/api/auth/logout', { method: 'POST' });
       adminAuthenticated = false; csrfToken = ''; allProjects = [];
       renderLogin();
     } catch (error) {
       if (error.status === 401) { adminAuthenticated = false; csrfToken = ''; renderLogin(); }
-      else { event.currentTarget.disabled = false; alert(error.message); }
+      else { logoutButton.disabled = false; alert(error.message); }
     }
   });
 }
@@ -382,6 +388,8 @@ async function startApplication() {
   try {
     await loadBranding();
     if (isPublicReview) return renderReview();
+    const authStatus = await api('/api/auth/status');
+    if (authStatus.setupRequired) return renderInitialSetup(appShell, api, () => renderLogin());
     try {
       const session = await api('/api/auth/session');
       csrfToken = session.csrfToken; adminAuthenticated = true;

@@ -4,8 +4,12 @@ services:
     ports:
       - "3001:3001"
     environment:
-      ADMIN_EMAIL: ${ADMIN_EMAIL:?Defina ADMIN_EMAIL no .env}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Defina ADMIN_PASSWORD no .env}
+      DB_HOST: ${DB_HOST:?Defina DB_HOST no .env}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:?Defina DB_NAME no .env}
+      DB_USER: ${DB_USER:?Defina DB_USER no .env}
+      DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD no .env}
+      DB_SSL: "${DB_SSL:-false}"
       COOKIE_SECURE: ${COOKIE_SECURE:-auto}
       TRUST_PROXY: ${TRUST_PROXY:-loopback}
       DATA_DIR: /app/data

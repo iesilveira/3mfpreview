@@ -4,7 +4,7 @@ export const DEFAULT_BRANDING = Object.freeze({
   browserTitle: 'Aprovação 3D', headerText: '',
   adminCaption: 'PAINEL DE APROVAÇÕES', reviewCaption: 'REVISÃO DE MODELO',
   loginCaption: 'ACESSO ADMINISTRATIVO',
-  settingsLabel: 'Personalização', logoutLabel: 'Sair',
+  settingsLabel: 'Personalização', accountLabel: 'Minha conta', logoutLabel: 'Sair',
   footerLeft: '', footerRight: 'Pré-visualização para validação do modelo'
 });
 export const ASSET_PATTERN = /^\/api\/branding-assets\/[a-f0-9-]{36}\.(png|jpg|webp|ico)$/;

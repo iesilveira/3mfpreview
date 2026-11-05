@@ -1,4 +1,15 @@
-# Aprovação 3MF — 1.2.0
+# Aprovação 3MF — 1.3.0
+
+> **1.3.0 — MySQL obrigatório.** Leia `ATUALIZACAO-1.3.0.md` antes de iniciar.
+> Execute a migração SQL e a importação dos dados reais separadamente.
+> Administradores, sessões, projetos, decisões e imagens ficam no banco; apenas 3MF no disco.
+> Primeiro acesso com token gerado por `npm run admin:setup-token`; não há senha padrão.
+> `npm install` e `npm run build` são etapas manuais. Não use npm ci antes de regenerar o lockfile.
+
+## Documentação anterior (histórica)
+As referências a login por ambiente, sessões em memória e JSON abaixo descrevem versões antigas.
+**Não siga essas instruções para configurar a 1.3.0; use o guia atual acima.**
+
 
 > Versão 1.2.0: leia `ATUALIZACAO-1.2.0.md` para configuração de acesso, cookies HTTPS, personalização, validações e empacotamento.
 
