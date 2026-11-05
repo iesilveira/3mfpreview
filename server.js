@@ -14,7 +14,6 @@ const MODELS_DIR = path.join(DATA_DIR, 'models');
 const DB_FILE = path.join(DATA_DIR, 'projects.json');
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
-await fs.mkdir(MODELS_DIR, { recursive: true });
 app.disable('x-powered-by');
 app.use(express.json({ limit: '100kb' }));
 
@@ -171,6 +170,15 @@ app.use((error, _req, res, _next) => {
   res.status(400).json({ error: error.message || 'Não foi possível concluir a solicitação.' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`API/app em http://localhost:${PORT} (senha ADMIN_PASSWORD configurada: ${ADMIN_PASSWORD !== 'troque-esta-senha'})`);
-});
+fs.mkdir(MODELS_DIR, { recursive: true })
+  .then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(
+        `API/app em http://localhost:${PORT} (senha ADMIN_PASSWORD configurada: ${ADMIN_PASSWORD !== 'troque-esta-senha'})`
+      );
+    });
+  })
+  .catch(error => {
+    console.error('Falha ao criar o diretório de dados:', error);
+    process.exit(1);
+  });
