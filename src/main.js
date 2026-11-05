@@ -2,11 +2,14 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { ThreeMFLoader } from 'three/addons/loaders/3MFLoader.js';
 import './style.css';
+import { branding, loadBranding, openBrandingSettings } from './branding.js';
 
 const app = document.querySelector('#app');
 const isPublicReview = /^\/p\/[^/]+/.test(window.location.pathname);
 const token = isPublicReview ? window.location.pathname.split('/')[2] : null;
-let adminPassword = sessionStorage.getItem('forma-admin-password') || '';
+let adminAuthenticated = false;
+let csrfToken = '';
+let allProjects = [];
 let activeViewer = null;
 
 const esc = (value = '') => String(value).replace(/[&<>"']/g, c => ({
@@ -18,60 +21,88 @@ const statusClass = status => ({ pending: 'pending', approved: 'approved', chang
 
 async function api(url, options = {}) {
   const headers = { ...(options.headers || {}) };
-  if (adminPassword) headers['x-admin-password'] = adminPassword;
-  const response = await fetch(url, { ...options, headers });
+  const method = String(options.method || 'GET').toUpperCase();
+  if (csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(method))
+    headers['x-csrf-token'] = csrfToken;
+  const response = await fetch(url, { ...options, headers, credentials: 'same-origin' });
   let data = {};
   try { data = await response.json(); } catch {}
-  if (!response.ok) throw new Error(data.error || 'Falha na solicitação.');
+  if (!response.ok) {
+    const error = new Error(data.error || 'Falha na solicitação.');
+    error.status = response.status;
+    if (response.status === 401 && url.startsWith('/api/admin/')) {
+      adminAuthenticated = false; csrfToken = '';
+      document.querySelector('#branding-dialog')?.dispatchEvent(new Event('session-expired'));
+    }
+    throw error;
+  }
   return data;
 }
-
 function appShell(content) {
+  const caption = isPublicReview ? branding.reviewCaption
+    : adminAuthenticated ? branding.adminCaption : branding.loginCaption;
   app.innerHTML = `<div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="/"><span class="brand-mark">F</span><span>forma<span class="brand-dot">.</span></span></a>
-      <span class="topbar-caption">${isPublicReview ? 'REVISÃO DE MODELO' : 'PAINEL DE APROVAÇÕES'}</span>
-      ${isPublicReview ? '' : '<button class="link-button" id="logout">Sair</button>'}
+      <a class="brand" href="/" aria-label="${esc(branding.logoAlt || 'Página inicial')}">
+        ${branding.logoUrl ? `<img class="brand-logo" src="${esc(branding.logoUrl)}" alt="${esc(branding.logoAlt)}" />` : '<span class="brand-logo-space" aria-hidden="true"></span>'}
+        ${branding.headerText ? `<span class="brand-header-text">${esc(branding.headerText)}</span>` : ''}
+      </a>
+      <span class="topbar-caption">${esc(caption)}</span>
+      ${!isPublicReview && adminAuthenticated ? `<nav class="topbar-actions" aria-label="Administração">
+        <button type="button" class="link-button" id="brand-settings" aria-label="Personalização">${esc(branding.settingsLabel) || '⚙'}</button>
+        <button type="button" class="link-button" id="logout" aria-label="Sair">${esc(branding.logoutLabel) || '↪'}</button>
+      </nav>` : ''}
     </header>${content}
-    <footer class="footer"><span>FORMA STUDIO · APROVAÇÃO 3D</span><span>Pré-visualização para validação do modelo</span></footer>
+    <footer class="footer"><span>${esc(branding.footerLeft)}</span><span>${esc(branding.footerRight)}</span></footer>
   </div>`;
-  document.querySelector('#logout')?.addEventListener('click', () => {
-    sessionStorage.removeItem('forma-admin-password');
-    adminPassword = '';
-    renderAdmin();
-  });
-}
-
-function renderLogin(message = '') {
-  appShell(`<main class="login-wrap">
-    <div class="login-card">
-      <div class="eyebrow">ÁREA DA EQUIPE</div>
-      <h1>Entre no seu painel</h1>
-      <p>Gerencie modelos enviados para aprovação.</p>
-      <form id="login-form" class="stack">
-        <label>Senha administrativa<input type="password" name="password" autocomplete="current-password" required placeholder="Sua senha" /></label>
-        ${message ? `<div class="notice error">${esc(message)}</div>` : ''}
-        <button class="button primary" type="submit">Acessar painel <span>→</span></button>
-      </form>
-      <div class="fine-print">Configure <code>ADMIN_PASSWORD</code> no servidor antes de publicar.</div>
-    </div>
-  </main>`);
-  document.querySelector('#login-form').addEventListener('submit', async event => {
-    event.preventDefault();
-    adminPassword = new FormData(event.currentTarget).get('password');
+  document.querySelector('#brand-settings')?.addEventListener('click', () =>
+    openBrandingSettings(api, () => renderAdmin()));
+  document.querySelector('#logout')?.addEventListener('click', async event => {
+    event.currentTarget.disabled = true;
     try {
-      await api('/api/admin/projects');
-      sessionStorage.setItem('forma-admin-password', adminPassword);
-      renderAdmin();
+      await api('/api/auth/logout', { method: 'POST' });
+      adminAuthenticated = false; csrfToken = ''; allProjects = [];
+      renderLogin();
     } catch (error) {
-      adminPassword = '';
-      renderLogin(error.message);
+      if (error.status === 401) { adminAuthenticated = false; csrfToken = ''; renderLogin(); }
+      else { event.currentTarget.disabled = false; alert(error.message); }
     }
   });
 }
-
+function renderLogin(message = '') {
+  appShell(`<main class="login-wrap"><div class="login-card">
+    <div class="eyebrow">ÁREA DA EQUIPE</div>
+    <h1>Entre no seu painel</h1><p>Gerencie modelos enviados para aprovação.</p>
+    <form id="login-form" class="stack">
+      <label>E-mail administrativo<input type="email" name="email" autocomplete="username" required maxlength="254" placeholder="voce@empresa.com" /></label>
+      <label>Senha<input type="password" name="password" autocomplete="current-password" required maxlength="1024" placeholder="Sua senha" /></label>
+      <div class="notice error ${message ? '' : 'hidden'}" id="login-error" role="alert">${esc(message)}</div>
+      <button class="button primary" type="submit">Acessar painel <span>→</span></button>
+    </form>
+    <div class="fine-print">Acesso administrativo com sessão. Nunca compartilhe suas credenciais com o cliente.</div>
+  </div></main>`);
+  document.querySelector('#login-form').addEventListener('submit', async event => {
+    event.preventDefault();
+    const form = event.currentTarget, data = new FormData(form);
+    const button = form.querySelector('button[type=submit]');
+    const errorBox = document.querySelector('#login-error');
+    button.disabled = true; errorBox.classList.add('hidden');
+    try {
+      const session = await api('/api/auth/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.get('email'), password: data.get('password') })
+      });
+      form.reset(); csrfToken = session.csrfToken; adminAuthenticated = true;
+      renderAdmin();
+    } catch (error) {
+      form.elements.password.value = '';
+      errorBox.textContent = error.message; errorBox.classList.remove('hidden');
+      button.disabled = false;
+    }
+  });
+}
 function renderAdmin() {
-  if (!adminPassword) return renderLogin();
+  if (!adminAuthenticated) return renderLogin();
   appShell(`<main class="dashboard">
     <section class="welcome-row">
       <div><div class="eyebrow">VISÃO GERAL</div><h1>Projetos para aprovar</h1><p>Envie um modelo e compartilhe um link privado com seu cliente.</p></div>
@@ -80,6 +111,7 @@ function renderAdmin() {
     <section class="stats" id="stats"></section>
     <section class="content-card">
       <div class="section-heading"><div><h2>Seus projetos</h2><p>Histórico de modelos enviados para revisão</p></div><span class="count" id="count"></span></div>
+      <label class="project-search" for="project-search"><span>Buscar projeto ou cliente</span><input id="project-search" type="search" autocomplete="off" placeholder="Nome do projeto ou do cliente" /></label>
       <div id="project-list" class="project-list"><div class="loading">Carregando projetos…</div></div>
     </section>
     <div class="modal-backdrop hidden" id="modal">
@@ -111,44 +143,61 @@ function renderAdmin() {
     if (file) document.querySelector('.file-name').textContent = `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB`;
   });
   document.querySelector('#upload-form').addEventListener('submit', submitUpload);
+  document.querySelector('#project-search').addEventListener('input', renderProjectList);
   loadProjects();
 }
 function closeModal() { document.querySelector('#modal')?.classList.add('hidden'); }
 
+const normalizeSearch = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+function renderProjectList() {
+  const list = document.querySelector('#project-list');
+  if (!list) return;
+  const query = normalizeSearch(document.querySelector('#project-search')?.value || '').trim();
+  const filtered = allProjects.filter(p => !query || normalizeSearch(p.name).includes(query)
+    || normalizeSearch(p.clientName).includes(query));
+  document.querySelector('#count').textContent = `${filtered.length} de ${allProjects.length} projetos`;
+  if (!filtered.length) {
+    list.innerHTML = query
+      ? '<div class="empty-state"><h3>Nenhum projeto encontrado</h3><p>Tente outro nome de projeto ou cliente.</p></div>'
+      : '<div class="empty-state"><h3>Nenhum modelo enviado ainda</h3><p>Envie seu primeiro arquivo 3MF para iniciar uma aprovação.</p><button class="button secondary" id="create-first">Criar primeiro envio</button></div>';
+    document.querySelector('#create-first')?.addEventListener('click', () => document.querySelector('#new-project').click());
+    return;
+  }
+  list.innerHTML = filtered.map(p => `
+    <article class="project-row">
+      <div class="file-badge">3MF</div>
+      <div class="project-info"><strong>${esc(p.name)}</strong><span>${esc(p.clientName || 'Cliente não informado')} · ${dateText(p.createdAt)}</span></div>
+      <span class="status-pill ${statusClass(p.status)}"><i></i>${statusLabel(p.status)}</span>
+      <div class="row-actions"><button class="button small secondary copy-link" data-token="${esc(p.token)}">Copiar link</button><a class="button small ghost" href="/p/${encodeURIComponent(p.token)}" target="_blank" rel="noopener">Abrir ↗</a></div>
+    </article>${p.decisionComment ? `<div class="decision-note"><b>Retorno:</b> ${esc(p.decisionComment)}</div>` : ''}`).join('');
+  list.querySelectorAll('.copy-link').forEach(button => button.onclick = async () => {
+    const url = `${location.origin}/p/${button.dataset.token}`;
+    try { await navigator.clipboard.writeText(url); button.textContent = 'Link copiado ✓'; }
+    catch { window.prompt('Copie o link de revisão:', url); }
+    setTimeout(() => { button.textContent = 'Copiar link'; }, 1800);
+  });
+}
 async function loadProjects() {
   const list = document.querySelector('#project-list');
   try {
     const projects = await api('/api/admin/projects');
+    if (!Array.isArray(projects)) throw new Error('Resposta de projetos inválida.');
+    if (!document.querySelector('#stats')) return;
+    allProjects = projects;
     const pending = projects.filter(p => p.status === 'pending').length;
     const approved = projects.filter(p => p.status === 'approved').length;
     document.querySelector('#stats').innerHTML = `
       <div class="stat-card"><span class="stat-label">TOTAL DE PROJETOS</span><strong>${projects.length}</strong><span class="stat-hint">no seu painel</span></div>
       <div class="stat-card"><span class="stat-label">AGUARDANDO</span><strong>${pending}</strong><span class="stat-hint">precisam de retorno</span></div>
       <div class="stat-card"><span class="stat-label">APROVADOS</span><strong>${approved}</strong><span class="stat-hint">liberados pelo cliente</span></div>`;
-    document.querySelector('#count').textContent = `${projects.length} ${projects.length === 1 ? 'projeto' : 'projetos'}`;
-    if (!projects.length) {
-      list.innerHTML = `<div class="empty-state"><div class="empty-cube">◇</div><h3>Nenhum modelo enviado ainda</h3><p>Envie seu primeiro arquivo 3MF para iniciar uma aprovação.</p><button class="button secondary" onclick="document.querySelector('#new-project').click()">Criar primeiro envio</button></div>`;
-      return;
-    }
-    list.innerHTML = projects.map(p => `
-      <article class="project-row">
-        <div class="file-badge">3MF</div>
-        <div class="project-info"><strong>${esc(p.name)}</strong><span>${esc(p.clientName || 'Cliente não informado')} · ${dateText(p.createdAt)}</span></div>
-        <span class="status-pill ${statusClass(p.status)}"><i></i>${statusLabel(p.status)}</span>
-        <div class="row-actions"><button class="button small secondary copy-link" data-token="${esc(p.token)}">Copiar link</button><a class="button small ghost" href="/p/${encodeURIComponent(p.token)}" target="_blank" rel="noopener">Abrir ↗</a></div>
-      </article>${p.decisionComment ? `<div class="decision-note"><b>Retorno:</b> ${esc(p.decisionComment)}</div>` : ''}`).join('');
-    document.querySelectorAll('.copy-link').forEach(btn => btn.onclick = async () => {
-      const url = `${location.origin}/p/${btn.dataset.token}`;
-      try { await navigator.clipboard.writeText(url); btn.textContent = 'Link copiado ✓'; }
-      catch { window.prompt('Copie o link de revisão:', url); }
-      setTimeout(() => { btn.textContent = 'Copiar link'; }, 1800);
-    });
+    renderProjectList();
   } catch (error) {
+    if (error.status === 401) return renderLogin('Sua sessão expirou. Entre novamente.');
+    if (!list?.isConnected) return;
     list.innerHTML = `<div class="notice error">${esc(error.message)} <button class="text-button" id="retry">Tentar novamente</button></div>`;
     document.querySelector('#retry').onclick = loadProjects;
   }
 }
-
 async function submitUpload(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -327,5 +376,24 @@ function initViewer(url) {
   }
 }
 
-if (isPublicReview) renderReview();
-else renderAdmin();
+async function startApplication() {
+  // Remove a credencial guardada pela versão antiga; nenhuma senha nova é persistida no browser.
+  try { sessionStorage.removeItem('forma-admin-password'); } catch {}
+  try {
+    await loadBranding();
+    if (isPublicReview) return renderReview();
+    try {
+      const session = await api('/api/auth/session');
+      csrfToken = session.csrfToken; adminAuthenticated = true;
+    } catch (error) {
+      if (error.status !== 401) throw error;
+      adminAuthenticated = false; csrfToken = '';
+    }
+    renderAdmin();
+  } catch (error) {
+    app.innerHTML = '<main class="not-found"><h1>Não foi possível iniciar</h1><p id="startup-error"></p><button class="button primary" id="startup-retry">Tentar novamente</button></main>';
+    document.querySelector('#startup-error').textContent = error.message;
+    document.querySelector('#startup-retry').onclick = () => location.reload();
+  }
+}
+startApplication();

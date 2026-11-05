@@ -1,0 +1,31 @@
+{
+  "target": "1.2.0",
+  "base": "0.1.0",
+  "reference": {
+    "repository": "https://github.com/iesilveira/3mfpreview",
+    "branch": "main",
+    "version": "0.1.0",
+    "inspected": "2026-11-05",
+    "commit": null,
+    "validation": "version + exact unique markers; no network"
+  },
+  "files": {
+    ".env.example": "ed89fced801a4af32715d5546cdf922b547aa163a1af476d5c9bea305fc795d0",
+    "ATUALIZACAO-1.2.0.md": "7725f286fc99ba789986e7e292a45d196bef78e04bd4b61464794c2df4061675",
+    "CHANGELOG.md": "5d6539d9547da00dd72eec6a61ffa2a76529719f6d02625366412db37d97652d",
+    "README.md": "1fbcfe82f5a2476a21a07f07f7dce7f4ccfd0fc0548956a85ed48aa4d4c993a3",
+    "VERSION": "1e5b51cde515396a9fa762909cf8ca6584ccc564b325d2eebeea76175fe95c4d",
+    "docker-compose.yml": "9fd40696e8a210767ca91611c58d6080e98740292f5565e76c1ecae2f8ee7d94",
+    "index.html": "7e44b30e4c7b451d0232f9bcd3be6b58d74eadb73c482d37dcaf0fc4b19ee1f4",
+    "package.json": "ad128529140945a6281bf1eed6aad1f630e60731fe4161c355e2b92a0bea3226",
+    "server.js": "9036e6aa42d11b48133c99933f00d2245b76fb51e2a9e5393b444283c3292c1a",
+    "server/admin-auth.js": "f793c9e0a5ac7550fa78af7ae2f5611e313fe22d64cebeed36f653e80688099f",
+    "server/branding.js": "b1770f6b8a2d36cf84f4155a06c93701a1d1d369c3477a61f0c2ca08313cb893",
+    "shared/branding.js": "3ff8b3356339adfc18a3fcc1ac34e933e3a230fb6a6eba0c59412da996074b60",
+    "src/branding.js": "e110dc25d2a0f335858b4955d79c5686ce6c10ed6f551e479d90ac407fbb9074",
+    "src/main.js": "e08f6682c252150eacbce7e5d2cb20b26af9d9783a89b73d6abb991a3bb46807",
+    "src/style.css": "bb22fb1742a314720735e436f94d41423f0d0cc4cbc6f3564cb0e0f8e4c835ee",
+    "tests/admin-1.2.test.mjs": "09ca3ebde8fa2951005c1f8063e98dd84224fa175203ecfd39dc8314f639f758",
+    "vite.config.js": "255d1a581c91135544b0a3db8b9884a46579a5527ae1089585fa568a21272974"
+  }
+}

@@ -4,17 +4,24 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { loadEnvFile } from 'node:process';
+import { installAdminAuth } from './server/admin-auth.js';
+import { installBranding } from './server/branding.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+try { loadEnvFile(path.join(__dirname, '.env')); }
+catch (error) { if (error.code !== 'ENOENT') throw error; }
 const app = express();
 const PORT = Number(process.env.PORT || 3001);
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'troque-esta-senha';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
 const MODELS_DIR = path.join(DATA_DIR, 'models');
 const DB_FILE = path.join(DATA_DIR, 'projects.json');
 const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 
 app.disable('x-powered-by');
+const proxySetting = process.env.TRUST_PROXY || 'loopback';
+app.set('trust proxy', /^\d+$/.test(proxySetting) ? Number(proxySetting) : proxySetting);
 app.use(express.json({ limit: '100kb' }));
 
 const storage = multer.diskStorage({
@@ -49,15 +56,8 @@ async function writeProjects(projects) {
   await fs.rename(temp, DB_FILE);
 }
 
-function requireAdmin(req, res, next) {
-  const supplied = req.get('x-admin-password') || '';
-  const expected = Buffer.from(ADMIN_PASSWORD);
-  const actual = Buffer.from(supplied);
-  const valid = expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
-  if (!valid) return res.status(401).json({ error: 'Senha administrativa inválida.' });
-  next();
-}
-
+const { requireAdmin, configured: adminConfigured } = installAdminAuth(app, { password: ADMIN_PASSWORD });
+const brandingReady = installBranding(app, { dataDir: DATA_DIR, requireAdmin });
 function cleanText(value, max = 300) {
   return String(value || '').trim().slice(0, max);
 }
@@ -165,16 +165,16 @@ app.get('*path', (_req, res) => {
 app.use((error, _req, res, _next) => {
   console.error(error);
   if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
-    return res.status(413).json({ error: 'Arquivo acima do limite de 100 MB.' });
+    return res.status(413).json({ error: 'Arquivo acima do limite permitido (3MF: 100 MB; identidade: 2 MB).' });
   }
   res.status(400).json({ error: error.message || 'Não foi possível concluir a solicitação.' });
 });
 
-fs.mkdir(MODELS_DIR, { recursive: true })
+Promise.all([fs.mkdir(MODELS_DIR, { recursive: true }), brandingReady])
   .then(() => {
     app.listen(PORT, '0.0.0.0', () => {
       console.log(
-        `API/app em http://localhost:${PORT} (senha ADMIN_PASSWORD configurada: ${ADMIN_PASSWORD !== 'troque-esta-senha'})`
+        `API/app em http://localhost:${PORT} (login e-mail/senha configurado: ${adminConfigured})`
       );
     });
   })

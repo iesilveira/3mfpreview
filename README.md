@@ -1,10 +1,12 @@
-# Forma — MVP de aprovação 3MF
+# Aprovação 3MF — 1.2.0
+
+> Versão 1.2.0: leia `ATUALIZACAO-1.2.0.md` para configuração de acesso, cookies HTTPS, personalização, validações e empacotamento.
 
 Aplicação web para enviar um arquivo `.3mf`, gerar um link privado de revisão, visualizar o modelo no navegador com rotação/zoom e dimensões X/Y/Z, e registrar aprovação ou solicitação de ajustes.
 
 ## Funcionalidades incluídas
 
-- Painel administrativo protegido por senha compartilhada.
+- Painel administrativo com login de e-mail/senha e sessão; personalização visual e busca.
 - Upload de arquivo `.3mf` (limite de 100 MB).
 - Link privado aleatório para o cliente.
 - Visualizador 3D com câmera orbital e cores/materiais que o loader conseguir interpretar.
@@ -23,12 +25,13 @@ npm install
 
 Linux/macOS:
 ```bash
-ADMIN_PASSWORD='uma-senha-forte' npm run dev
+ADMIN_EMAIL='admin@exemplo.com' ADMIN_PASSWORD='substitua-por-uma-senha-exclusiva' npm run dev
 ```
 
 PowerShell:
 ```powershell
-$env:ADMIN_PASSWORD='uma-senha-forte'
+$env:ADMIN_EMAIL='admin@exemplo.com'
+$env:ADMIN_PASSWORD='substitua-por-uma-senha-exclusiva'
 npm run dev
 ```
 
@@ -36,7 +39,7 @@ Abra o endereço de desenvolvimento indicado pelo Vite, normalmente `http://loca
 
 ## Deploy com Docker Compose
 
-1. Copie `.env.example` para `.env` e defina uma senha forte em `ADMIN_PASSWORD`.
+1. Copie `.env.example` para `.env` e defina `ADMIN_EMAIL` e uma senha exclusiva de pelo menos 12 caracteres em `ADMIN_PASSWORD`.
 2. Execute:
    ```bash
    docker compose up --build -d
@@ -49,14 +52,14 @@ Abra o endereço de desenvolvimento indicado pelo Vite, normalmente `http://loca
 ```bash
 npm install
 npm run build
-ADMIN_PASSWORD='uma-senha-forte' npm start
+ADMIN_EMAIL='admin@exemplo.com' ADMIN_PASSWORD='substitua-por-uma-senha-exclusiva' npm start
 ```
 
 Defina também `PORT` e `DATA_DIR` conforme o ambiente. Para produção, use HTTPS e armazenamento persistente.
 
 ## Como usar
 
-1. Abra o painel e entre com a senha configurada em `ADMIN_PASSWORD`.
+1. Abra o painel e entre com o e-mail e a senha configurados em `ADMIN_EMAIL` e `ADMIN_PASSWORD`.
 2. Clique **Novo modelo**, preencha os dados e selecione um `.3mf`.
 3. Após o upload, copie o link de revisão para enviar ao cliente.
 4. O cliente pode girar/ampliar o modelo e aprovar ou solicitar ajustes.
@@ -64,7 +67,7 @@ Defina também `PORT` e `DATA_DIR` conforme o ambiente. Para produção, use HTT
 
 ## Notas e limitações do protótipo
 
-- Este é um MVP inicial, não uma implantação auditada para produção. A senha administrativa é compartilhada; substitua por contas individuais, autenticação robusta, limites de tentativa, política de privacidade e proteção operacional antes de uso comercial.
+- Este é um MVP inicial, não uma implantação auditada para produção. Há uma única conta administrativa por ambiente e sessões em memória. Para múltiplas contas ou réplicas, implemente um provedor de identidade e armazenamento compartilhado; faça uma revisão de segurança antes de uso comercial.
 - O banco atual é um arquivo JSON: adequado para protótipo/instância única, não para múltiplas réplicas ou grande volume. Migre para PostgreSQL e armazenamento privado de objetos conforme crescer.
 - Os links de revisão são bearer links: quem tiver o link poderá ver o modelo e registrar uma decisão. Compartilhe apenas com o cliente; implemente expiração/revogação quando necessário.
 - Dimensões são calculadas pela caixa delimitadora da geometria interpretada pelo visualizador. Confirme um arquivo real de cada fatiador/exportador e unidade antes de usar como especificação de fabricação.
