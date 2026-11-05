@@ -1,4 +1,11 @@
-# Aprovação 3MF — 1.3.1
+# Aprovação 3MF — 1.3.2
+
+> Instalação NOVA na Hostinger: leia `ATUALIZACAO-1.3.2.md`.
+> Mantenha DB_*; adicione INSTALLATION_KEY no painel e abra /install.
+> Cadastro de e-mail/senha pelo navegador, sem comandos no servidor.
+> Não siga as etapas antigas de data:import/setup-token para esta instalação nova.
+
+## Documentação anterior (histórico; não usar para instalação nova 1.3.2)
 
 > Leia `ATUALIZACAO-1.3.1.md`. Host MySQL localhost, porta 3306.
 > Diagnóstico: `npm run db:check` (manual, somente leitura). Esquema continua 1.3.0.

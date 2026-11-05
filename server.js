@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {loadEnvFile} from 'node:process';
 import {getPool} from './server/db.js';
 import {logFailure} from './server/database-diagnostics.js';
+import {installWebSetup} from './server/web-installation.js';
 import {createStore,problem} from './server/store.js';
 import {installAdminAuth,sameOrigin} from './server/admin-auth.js';
 import {installBranding} from './server/branding.js';
@@ -19,14 +20,15 @@ app.disable('x-powered-by');
 const proxy=process.env.TRUST_PROXY||'loopback';
 app.set('trust proxy',/^\d+$/.test(proxy)?Number(proxy):proxy);
 app.use(express.json({limit:'100kb'}));
+const installer=installWebSetup(app,{poolProvider:getPool,root,dataDir:path.dirname(models)});
 app.get('/api/health',async(_req,res)=>{
   res.set('Cache-Control','no-store');
   try{
     await store.ready();
-    res.json({ok:true,version:'1.3.1',storage:'mysql'});
+    res.json({ok:true,version:'1.3.2',storage:'mysql'});
   }catch(error){
     const info=logFailure('health',error);
-    res.status(503).json({ok:false,version:'1.3.1',storage:'mysql',
+    res.status(503).json({ok:false,version:'1.3.2',storage:'mysql',
       code:info.code,error:info.message,migrationRequired:['SCHEMA_MISMATCH','IMPORT_PENDING'].includes(info.code)});
   }
 });
@@ -115,10 +117,11 @@ app.use((error,_req,res,_next)=>{
   }
   res.status(status).json({error:error.message});
 });
-// Não há top-level await, migração automática, escrita de JSON ou ativos em disco.
+// Sem top-level await. Instalação inicial somente pelo POST protegido e confirmado em /install.
 fs.mkdir(models,{recursive:true}).then(()=>app.listen(port,'0.0.0.0',()=>{
-  console.log(`Aplicação 1.3.1 em http://localhost:${port}; verificação MySQL pendente.`);
-  store.ready().then(()=>store.branding()).then(()=>{
-    console.log('[OK] MySQL, esquema, importação e identidade visual disponíveis.');
+  console.log(`Aplicação 1.3.2 em http://localhost:${port}; armazenamento MySQL.`);
+  installer.status().then(state=>{
+    console.log(state.installed?'[OK] Instalação concluída; login disponível.':
+      '[INSTALAÇÃO PENDENTE] Abra /install no navegador. Não é necessário terminal no servidor.');
   }).catch(error=>logFailure('startup',error));
 })).catch(error=>{console.error('Falha ao preparar models:',error.code);process.exitCode=1;});

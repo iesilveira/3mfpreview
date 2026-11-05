@@ -1,27 +1,6 @@
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export function renderInitialSetup(appShell,api,onCreated){
-  appShell(`<main class="login-wrap"><section class="login-card">
-    <div class="eyebrow">CONFIGURAÇÃO INICIAL</div><h1>Cadastre o administrador</h1>
-    <p>Use o token temporário gerado no terminal com <code>npm run admin:setup-token</code>.</p>
-    <form id="initial-admin" class="stack">
-      <label>Token de instalação<input name="token" required minlength="64" maxlength="64" autocomplete="off" /></label>
-      <label>E-mail<input name="email" type="email" required maxlength="254" autocomplete="username" /></label>
-      <label>Senha (mínimo 12 caracteres)<input name="password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password" /></label>
-      <label>Confirme a senha<input name="confirm" type="password" required minlength="12" maxlength="1024" autocomplete="new-password" /></label>
-      <div id="setup-error" class="notice error hidden" role="alert"></div>
-      <button class="button primary" type="submit">Criar administrador</button>
-    </form></section></main>`);
-  const form=document.querySelector('#initial-admin');
-  form.onsubmit=async event=>{
-    event.preventDefault();const data=new FormData(form),button=form.querySelector('button'),error=document.querySelector('#setup-error');
-    if(data.get('password')!==data.get('confirm')){error.textContent='As senhas não coincidem.';error.classList.remove('hidden');return;}
-    button.disabled=true;error.classList.add('hidden');
-    try{
-      await api('/api/auth/setup',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({email:data.get('email'),password:data.get('password'),token:data.get('token')})});
-      form.reset();onCreated();
-    }catch(e){error.textContent=e.message;error.classList.remove('hidden');button.disabled=false;}
-  };
+export function renderInitialSetup(_appShell,_api,_onCreated){
+  window.location.replace('/install');
 }
 export async function openAccount(api,onChanged){
   if(document.querySelector('#account-dialog'))return;

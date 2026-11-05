@@ -11,3 +11,6 @@ data/*
 !.env.sample
 /atualizador*.py
 /atualizar*.py
+
+# Segredos locais e atualizadores
+/.installation-key

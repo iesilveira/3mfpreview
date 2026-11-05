@@ -11,14 +11,14 @@ const hints = Object.freeze({
   ER_ACCESS_DENIED_ERROR: 'MySQL recusou as credenciais. Confira DB_USER, DB_PASSWORD e o acesso autorizado para o host.',
   ER_DBACCESS_DENIED_ERROR: 'O usuário MySQL não tem acesso ao banco configurado.',
   ER_BAD_DB_ERROR: 'O banco configurado em DB_NAME não foi encontrado.',
-  ER_NO_SUCH_TABLE: 'Tabelas MySQL ausentes. Importe migrations/1.3.0.sql no banco correto; depois importe os dados legados.',
+  ER_NO_SUCH_TABLE: 'Tabelas MySQL ausentes. Para a instalação nova, abra /install no navegador e conclua o cadastro protegido.',
   ER_TABLEACCESS_DENIED_ERROR: 'Permissão MySQL insuficiente para uma tabela da aplicação.',
   ER_LOCK_WAIT_TIMEOUT: 'O MySQL está aguardando um bloqueio. Aguarde e tente novamente.',
   ER_LOCK_DEADLOCK: 'Conflito temporário de transação no MySQL. Tente novamente.',
   ER_NET_PACKET_TOO_LARGE: 'O MySQL recusou o tamanho do pacote. Verifique max_allowed_packet para os ativos de identidade.',
   PROTOCOL_CONNECTION_LOST: 'Conexão com o MySQL interrompida. Verifique a disponibilidade do banco.',
   SCHEMA_MISMATCH: 'Esquema MySQL 1.3.0 ausente ou incompatível. Confira migrations/1.3.0.sql, sem apagar dados.',
-  IMPORT_PENDING: 'Importação pendente. Com a aplicação parada, execute npm run data:import -- --confirm-stopped no ambiente dos dados reais.',
+  IMPORT_PENDING: 'Instalação pendente. Para instalação nova, abra /install. Não execute importação de dados legados neste cenário.',
   BRANDING_MISSING: 'A identidade visual não foi encontrada no banco. Verifique a importação; não recrie ou apague tabelas.',
   SERVICE_UNAVAILABLE: 'Serviço indisponível. Consulte o diagnóstico do servidor.'
 });

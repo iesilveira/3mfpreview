@@ -1,0 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap');
+*{box-sizing:border-box}body{margin:0;background:#f4f6f9;color:#192333;font-family:Montserrat,Arial,sans-serif;line-height:1.6;padding:40px 20px}
+.card{max-width:650px;margin:0 auto;background:#fff;padding:36px;border:1px solid #dce3eb;box-shadow:0 10px 40px #162c4610}
+h1{font-size:1.85rem;line-height:1.25;margin:12px 0 18px}.eyebrow{font-size:.73rem;font-weight:700;color:#0572cf;letter-spacing:.1em}
+p,small{color:#566477}form{margin-top:24px}label{display:block;margin:18px 0 6px;font-size:.9rem;font-weight:600}
+input:not([type=checkbox]){display:block;width:100%;margin-top:7px;padding:12px;border:1px solid #b9c6d4;border-radius:0;font:inherit}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid #0572cf;outline-offset:3px}
+.check{display:flex;align-items:flex-start;gap:10px;font-weight:500}.check input{margin-top:5px}
+button,.button{display:block;margin-top:24px;padding:13px 16px;border:0;background:#0572cf;color:#fff;font:600 .9rem Montserrat,Arial,sans-serif;text-align:center;text-decoration:none;cursor:pointer;width:100%}
+button:disabled{opacity:.55;cursor:wait}#notice{padding:13px 16px;background:#edf6ff;border-left:3px solid #0572cf;font-size:.9rem}
+#notice.error{background:#fff1f1;border-color:#e62526;color:#9f191a}.foot{font-size:.78rem;margin-top:26px}
+[hidden]{display:none!important}@media(max-width:520px){body{padding:15px}.card{padding:24px 20px}h1{font-size:1.55rem}}

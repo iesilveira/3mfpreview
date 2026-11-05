@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Instalação inicial — 3MF Preview</title>
+<link rel="stylesheet" href="/installation/style.css">
+<script type="module" src="/installation/browser.js"></script></head>
+<body><main class="card"><div class="eyebrow">3MF PREVIEW · CONFIGURAÇÃO INICIAL</div>
+<h1>Cadastre seu administrador</h1>
+<p>Instalação nova, sem importação de projetos. O banco será preparado ao confirmar o cadastro.</p>
+<div id="notice" role="status" aria-live="polite">Verificando a instalação…</div>
+<form id="setup" hidden>
+<label>Chave de instalação<input name="key" type="password" required minlength="32" maxlength="256" autocomplete="off" spellcheck="false"></label>
+<small>Use a chave gerada pelo atualizador local e configurada como INSTALLATION_KEY no painel da hospedagem. Não é a senha do MySQL.</small>
+<label>E-mail do administrador<input name="email" type="email" required maxlength="254" autocomplete="username"></label>
+<label>Senha<input name="password" type="password" required minlength="12" maxlength="1024" autocomplete="new-password"></label>
+<small>Mínimo de 12 caracteres. Guarde a senha em um local seguro.</small>
+<label>Confirme a senha<input name="confirmPassword" type="password" required minlength="12" maxlength="1024" autocomplete="new-password"></label>
+<label class="check"><input name="confirmEmpty" type="checkbox" required>Confirmo que esta é uma instalação nova, sem dados anteriores.</label>
+<button type="submit">Criar administrador e concluir instalação</button>
+</form>
+<a id="login" class="button" href="/" hidden>Ir para o login</a>
+<p class="foot">A instalação será bloqueada após o primeiro cadastro. Não há senha padrão.</p>
+<noscript>Ative JavaScript para concluir a instalação.</noscript>
+</main></body></html>

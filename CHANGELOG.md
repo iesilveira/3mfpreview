@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.2] - 2026-11-05
+- Instalação nova pelo navegador, com chave privada e confirmação explícita.
+- Criação das tabelas e do primeiro administrador sem terminal na hospedagem.
+- Identidade padrão e estado inicial gravados junto com o cadastro transacional.
+- Bloqueio após o primeiro cadastro e recusa de banco/arquivos não vazios.
+- Redirecionamento da raiz para /install enquanto a instalação não foi concluída.
+- Preservados login, sessões, conta, branding, projetos e visualizador.
+
 ## [1.3.1] - 2026-11-05
 - Configuração MySQL localhost:3306 em .env privado, sem credenciais no código.
 - Diagnóstico de configuração, conexão, credenciais, esquema, importação e identidade.
