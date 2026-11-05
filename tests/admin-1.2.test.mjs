@@ -32,7 +32,7 @@ function fixture(store=fakeStore()){
     const res={statusCode:200,status(n){this.statusCode=n;return this;},set(){return this;},
       json(body){this.body=body;return this;},cookie(k,v,o){this.cookieValue=k+'='+v;this.options=o;return this;},clearCookie(){this.cleared=true;return this;}};
     const handlers=routes.get(method+' '+path);let i=0;
-    const next=async error=>{if(error)throw error;const fn=handlers[i++];if(fn)return fn(req,res,next);};
+    const next=error=>{if(error)throw error;const fn=handlers[i++];if(fn)return fn(req,res,next);};
     try{await next();}catch(error){res.statusCode=error.status||500;res.body={error:error.message};}
     return res;
   }

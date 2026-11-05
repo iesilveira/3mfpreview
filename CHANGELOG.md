@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1] - 2026-11-05
+- Configuração MySQL localhost:3306 em .env privado, sem credenciais no código.
+- Diagnóstico de configuração, conexão, credenciais, esquema, importação e identidade.
+- Comando db:check somente de leitura e health check de prontidão.
+- Frontend exibe orientação segura em falhas de identidade visual.
+- Corrigido executor dos testes assíncronos de autenticação.
+- Esquema 1.3.0 preservado; nenhuma migração automática.
+
 ## [1.3.0] - 2026-11-05
 - MySQL para administradores, sessões/CSRF, limites, projetos/clientes, decisões, identidade e imagens.
 - Somente binários 3MF permanecem em DATA_DIR/models.

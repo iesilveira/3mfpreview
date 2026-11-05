@@ -4,3 +4,10 @@ dist/
 data/*
 !data/.gitkeep
 .DS_Store
+
+# Configuração privada e atualizadores locais
+.env.*
+!.env.example
+!.env.sample
+/atualizador*.py
+/atualizar*.py

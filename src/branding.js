@@ -30,7 +30,15 @@ export function applyBranding(input) {
 }
 export async function loadBranding() {
   const response = await fetch('/api/branding', { credentials:'same-origin', cache:'no-store' });
-  if (!response.ok) throw new Error('Não foi possível carregar a identidade visual.');
+  if (!response.ok) {
+    let failure = {};
+    try { failure = await response.json(); } catch {}
+    const detail = typeof failure.error === 'string'
+      ? failure.error : 'Não foi possível carregar a identidade visual.';
+    const code = typeof failure.code === 'string' && /^[A-Z_0-9]+$/.test(failure.code)
+      ? ` [${failure.code}]` : '';
+    throw new Error(detail + code);
+  }
   applyBranding(await response.json());
 }
 const textFields = [

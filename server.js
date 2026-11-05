@@ -6,6 +6,7 @@ import crypto from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {loadEnvFile} from 'node:process';
 import {getPool} from './server/db.js';
+import {logFailure} from './server/database-diagnostics.js';
 import {createStore,problem} from './server/store.js';
 import {installAdminAuth,sameOrigin} from './server/admin-auth.js';
 import {installBranding} from './server/branding.js';
@@ -19,8 +20,15 @@ const proxy=process.env.TRUST_PROXY||'loopback';
 app.set('trust proxy',/^\d+$/.test(proxy)?Number(proxy):proxy);
 app.use(express.json({limit:'100kb'}));
 app.get('/api/health',async(_req,res)=>{
-  try{const state=await store.state();res.status(state.data_ready?200:503).json({ok:Boolean(state.data_ready),version:'1.3.0',storage:'mysql',migrationRequired:!state.data_ready});}
-  catch{res.status(503).json({ok:false,version:'1.3.0',storage:'mysql',error:'Banco indisponível ou esquema não configurado.'});}
+  res.set('Cache-Control','no-store');
+  try{
+    await store.ready();
+    res.json({ok:true,version:'1.3.1',storage:'mysql'});
+  }catch(error){
+    const info=logFailure('health',error);
+    res.status(503).json({ok:false,version:'1.3.1',storage:'mysql',
+      code:info.code,error:info.message,migrationRequired:['SCHEMA_MISMATCH','IMPORT_PENDING'].includes(info.code)});
+  }
 });
 app.use('/api',async(_req,res,next)=>{
   res.set('Cache-Control','no-store').set('X-Content-Type-Options','nosniff');
@@ -101,10 +109,16 @@ app.use((error,_req,res,_next)=>{
   if(error instanceof multer.MulterError)return res.status(error.code==='LIMIT_FILE_SIZE'?413:400).json({error:'Upload inválido (3MF: 100 MB; identidade: 2 MB).'});
   if(error.type==='entity.parse.failed')return res.status(400).json({error:'JSON inválido.'});
   const status=Number.isInteger(error.status)&&error.status>=400&&error.status<600?error.status:503;
-  if(status>=500)console.error('Falha da aplicação:',error.code||error.name||'erro');
-  res.status(status).json({error:status<500?error.message:'Banco ou serviço indisponível. Verifique a configuração e a migração.'});
+  if(status>=500){
+    const info=logFailure('request',error);
+    return res.status(status).json({error:info.message,code:info.code});
+  }
+  res.status(status).json({error:error.message});
 });
 // Não há top-level await, migração automática, escrita de JSON ou ativos em disco.
 fs.mkdir(models,{recursive:true}).then(()=>app.listen(port,'0.0.0.0',()=>{
-  console.log(`Aplicação 1.3.0 em http://localhost:${port}; armazenamento MySQL.`);
+  console.log(`Aplicação 1.3.1 em http://localhost:${port}; verificação MySQL pendente.`);
+  store.ready().then(()=>store.branding()).then(()=>{
+    console.log('[OK] MySQL, esquema, importação e identidade visual disponíveis.');
+  }).catch(error=>logFailure('startup',error));
 })).catch(error=>{console.error('Falha ao preparar models:',error.code);process.exitCode=1;});

@@ -1,4 +1,10 @@
-# Aprovação 3MF — 1.3.0
+# Aprovação 3MF — 1.3.1
+
+> Leia `ATUALIZACAO-1.3.1.md`. Host MySQL localhost, porta 3306.
+> Diagnóstico: `npm run db:check` (manual, somente leitura). Esquema continua 1.3.0.
+> Segredos ficam no ambiente/.env privado, nunca no ZIP ou Git.
+
+## Documentação da versão anterior (histórico)
 
 > **1.3.0 — MySQL obrigatório.** Leia `ATUALIZACAO-1.3.0.md` antes de iniciar.
 > Execute a migração SQL e a importação dos dados reais separadamente.
